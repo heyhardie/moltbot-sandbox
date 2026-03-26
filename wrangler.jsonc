@@ -20,7 +20,7 @@
     "bindings": [
       {
         "name": "Sandbox",
-        "class_name": "Sandbox"
+        "class_name": "SANDBOX"
       }
     ]
   },
