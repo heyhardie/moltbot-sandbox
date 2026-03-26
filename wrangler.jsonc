@@ -24,8 +24,7 @@
       }
     ]
   },
-  // This is the "Magic Fix" for the Durable Object Exception.
-  // It tells Cloudflare to physically create the Sandbox class.
+  // This triggers the creation of the Sandbox container manager
   "migrations": [
     {
       "tag": "v1",
@@ -37,7 +36,7 @@
   "kv_namespaces": [
     {
       "binding": "STATE",
-      "id": "PASTE_YOUR_KV_ID_HERE" 
+      "id": "a1fd4c6e172c42bdbd1eac692345149d"
     }
   ],
   "r2_buckets": [
