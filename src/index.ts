@@ -267,21 +267,25 @@ app.all('*', async (c) => {
 
   // Ensure moltbot is running (this will wait for startup)
   try {
+    // Only snapshot when we had to start a NEW gateway (not on every request)
+    const wasAlreadyRunning = isGatewayReady;
     await ensureMoltbotGateway(sandbox, c.env);
 
-    // Schedule a snapshot after gateway startup settles (non-blocking).
-    // This captures the initial config/workspace state for persistence.
-    c.executionCtx.waitUntil(
-      (async () => {
-        // Wait 30s for the gateway to write initial state
-        await new Promise((r) => setTimeout(r, 30_000));
-        try {
-          await createSnapshot(sandbox, c.env.STATE);
-        } catch (err) {
-          console.error('[snapshot] Post-startup snapshot failed:', err);
-        }
-      })(),
-    );
+    if (!wasAlreadyRunning) {
+      // Schedule a snapshot after gateway startup settles (non-blocking).
+      // This captures the initial config/workspace state for persistence.
+      c.executionCtx.waitUntil(
+        (async () => {
+          // Wait 30s for the gateway to write initial state
+          await new Promise((r) => setTimeout(r, 30_000));
+          try {
+            await createSnapshot(sandbox, c.env.STATE);
+          } catch (err) {
+            console.error('[snapshot] Post-startup snapshot failed:', err);
+          }
+        })(),
+      );
+    }
   } catch (error) {
     console.error('[PROXY] Failed to start Moltbot:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -410,11 +414,15 @@ app.all('*', async (c) => {
     });
 
     // Handle close events
+    // Codes 1005 and 1006 are reserved and cannot be sent in a close frame.
+    // Replace them with 1000 (normal closure) to avoid InvalidAccessError.
+    const safeCloseCode = (code: number) => (code === 1005 || code === 1006 ? 1000 : code);
+
     serverWs.addEventListener('close', (event) => {
       if (debugLogs) {
         console.log('[WS] Client closed:', event.code, event.reason);
       }
-      containerWs.close(event.code, event.reason);
+      containerWs.close(safeCloseCode(event.code), event.reason);
     });
 
     containerWs.addEventListener('close', (event) => {
@@ -429,7 +437,7 @@ app.all('*', async (c) => {
       if (debugLogs) {
         console.log('[WS] Transformed close reason:', reason);
       }
-      serverWs.close(event.code, reason);
+      serverWs.close(safeCloseCode(event.code), reason);
     });
 
     // Handle errors
