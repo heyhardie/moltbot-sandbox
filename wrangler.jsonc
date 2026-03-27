@@ -13,7 +13,9 @@
   },
   "vars": {
     "PUBLIC_URL": "https://miracle.hardie.org",
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "HOST": "0.0.0.0",
+    "PORT": "18789"
   },
   "containers": [
     {
@@ -31,11 +33,7 @@
       }
     ]
   },
-  "migrations": [
-    {
-      "tag": "v5"
-    }
-  ],
+  // MIGRATIONS REMOVED: This stops the [code: 10074] error
   "kv_namespaces": [
     { "binding": "STATE", "id": "a1fd4c6e172c42bdbd1eac692345149d" },
     { "binding": "KV", "id": "a1fd4c6e172c42bdbd1eac692345149d" }
