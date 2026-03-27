@@ -1,4 +1,4 @@
-FROM docker.io/cloudflare/sandbox:0.7.0
+FROM docker.io/cloudflare/sandbox:0.7.21
 
 # Install Node.js 22 (required by OpenClaw)
 # The base image has Node 20, we need to replace it with Node 22
@@ -33,7 +33,7 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script
-# Build cache bust: 2026-03-27-v33-discord-token-env-ref
+# Build cache bust: 2026-03-27-v34-sandbox-0.7.21
 COPY start-openclaw.sh /usr/local/bin/start-openclaw.sh
 RUN chmod +x /usr/local/bin/start-openclaw.sh
 
