@@ -6,17 +6,14 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // This section prevents your variables from disappearing
-  "vars": {
-    "PUBLIC_URL": "https://miracle.hardie.org",
-    "HOST": "0.0.0.0",
-    "PORT": "18789",
-    "NODE_VERSION": "22.17.0"
-  },
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "PUBLIC_URL": "https://miracle.hardie.org",
+    "NODE_ENV": "production"
   },
   "containers": [
     {
@@ -36,8 +33,7 @@
   },
   "migrations": [
     {
-      "tag": "v5" 
-      // new_classes is removed because the class is already live
+      "tag": "v5"
     }
   ],
   "kv_namespaces": [
@@ -45,10 +41,10 @@
     { "binding": "KV", "id": "a1fd4c6e172c42bdbd1eac692345149d" }
   ],
   "r2_buckets": [
-    { "binding": "MOLTBOT_BUCKET", "bucket_name": "openclaw-memory" }
+    { "binding": "MOLTBOT_BUCKET", "bucket_name": "openclaw-memory" },
+    { "binding": "MEMORY_BUCKET", "bucket_name": "openclaw-memory" }
   ],
   "browser": {
     "binding": "BROWSER"
-  },
-  "observability": { "enabled": true }
+  }
 }
