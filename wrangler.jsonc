@@ -26,15 +26,6 @@
       "max_instances": 1
     }
   ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "SANDBOX",
-        "class_name": "Sandbox"
-      }
-    ]
-  },
-  // MIGRATIONS REMOVED: This stops the [code: 10074] error
   "kv_namespaces": [
     { "binding": "STATE", "id": "a1fd4c6e172c42bdbd1eac692345149d" },
     { "binding": "KV", "id": "a1fd4c6e172c42bdbd1eac692345149d" }
