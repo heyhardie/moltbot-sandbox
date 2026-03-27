@@ -6,7 +6,6 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // 1. Static Assets Configuration (This fixes the blank page)
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
@@ -17,45 +16,33 @@
       "class_name": "Sandbox",
       "image": "./Dockerfile",
       "instance_type": "standard-1",
-      "max_instances": 1,
-      "port": 18789,
-      "protocol": "http"
+      "max_instances": 1
+      // port and protocol removed to stop warnings
     }
   ],
   "durable_objects": {
     "bindings": [
       {
-        "name": "SANDBOX",
+        "name": "SANDBOX", // Corrected to ALL CAPS
         "class_name": "Sandbox"
       }
     ]
   },
   "migrations": [
     {
-      "tag": "v4", // Incremented to force a fresh update
-      "new_classes": ["Sandbox"]
+      "tag": "v5" 
+      // Note: new_classes is removed because the class already exists
     }
   ],
   "kv_namespaces": [
-    {
-      "binding": "STATE",
-      "id": "a1fd4c6e172c42bdbd1eac692345149d"
-    },
-    {
-      "binding": "KV",
-      "id": "a1fd4c6e172c42bdbd1eac692345149d"
-    }
+    { "binding": "STATE", "id": "a1fd4c6e172c42bdbd1eac692345149d" },
+    { "binding": "KV", "id": "a1fd4c6e172c42bdbd1eac692345149d" }
   ],
   "r2_buckets": [
-    {
-      "binding": "MOLTBOT_BUCKET",
-      "bucket_name": "openclaw-memory"
-    }
+    { "binding": "MOLTBOT_BUCKET", "bucket_name": "openclaw-memory" }
   ],
   "browser": {
     "binding": "BROWSER"
   },
-  "observability": {
-    "enabled": true
-  }
+  "observability": { "enabled": true }
 }
