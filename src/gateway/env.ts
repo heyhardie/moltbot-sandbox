@@ -48,6 +48,7 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.CF_AI_GATEWAY_MODEL) envVars.CF_AI_GATEWAY_MODEL = env.CF_AI_GATEWAY_MODEL;
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
+  if (env.PUBLIC_URL) envVars.PUBLIC_URL = env.PUBLIC_URL;
 
   // Note: R2 credentials are no longer passed to the container.
   // Persistence is handled by the Sandbox SDK's backup/restore API,

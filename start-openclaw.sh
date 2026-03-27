@@ -93,8 +93,15 @@ if (process.env.OPENCLAW_GATEWAY_TOKEN) {
     config.gateway.auth.token = process.env.OPENCLAW_GATEWAY_TOKEN;
 }
 
+// Always allow the public URL as an origin
+const allowedOrigins = ['http://localhost:18789', 'http://127.0.0.1:18789'];
+if (process.env.PUBLIC_URL) {
+    allowedOrigins.push(process.env.PUBLIC_URL);
+}
+config.gateway.controlUi = config.gateway.controlUi || {};
+config.gateway.controlUi.allowedOrigins = allowedOrigins;
+
 if (process.env.OPENCLAW_DEV_MODE === 'true') {
-    config.gateway.controlUi = config.gateway.controlUi || {};
     config.gateway.controlUi.allowInsecureAuth = true;
 }
 
