@@ -26,6 +26,14 @@
       }
     ]
   },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "Sandbox"
+      ]
+    }
+  ],
   "containers": [
     {
       "class_name": "Sandbox",

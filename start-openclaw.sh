@@ -156,11 +156,11 @@ if (process.env.CF_AI_GATEWAY_MODEL) {
 }
 
 // Telegram configuration
-// Overwrite entire channel object to drop stale keys from old R2 backups
-// that would fail OpenClaw's strict config validation (see #47)
+// Merge with existing config so user-configured fields survive restarts.
 if (process.env.TELEGRAM_BOT_TOKEN) {
     const dmPolicy = process.env.TELEGRAM_DM_POLICY || 'pairing';
     config.channels.telegram = {
+        ...config.channels.telegram,
         botToken: process.env.TELEGRAM_BOT_TOKEN,
         enabled: true,
         dmPolicy: dmPolicy,
@@ -174,6 +174,7 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 
 // Discord configuration
 // Discord uses a nested dm object: dm.policy, dm.allowFrom (per DiscordDmConfig)
+// Merge with existing config so user-configured fields (guilds, channels, etc.) survive restarts.
 if (process.env.DISCORD_BOT_TOKEN) {
     const dmPolicy = process.env.DISCORD_DM_POLICY || 'pairing';
     const dm = { policy: dmPolicy };
@@ -181,6 +182,7 @@ if (process.env.DISCORD_BOT_TOKEN) {
         dm.allowFrom = ['*'];
     }
     config.channels.discord = {
+        ...config.channels.discord,
         token: process.env.DISCORD_BOT_TOKEN,
         enabled: true,
         dm: dm,
@@ -188,8 +190,10 @@ if (process.env.DISCORD_BOT_TOKEN) {
 }
 
 // Slack configuration
+// Merge with existing config so user-configured fields survive restarts.
 if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack = {
+        ...config.channels.slack,
         botToken: process.env.SLACK_BOT_TOKEN,
         appToken: process.env.SLACK_APP_TOKEN,
         enabled: true,
