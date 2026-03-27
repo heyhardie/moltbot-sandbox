@@ -6,6 +6,12 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  // 1. Static Assets Configuration (This fixes the blank page)
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
   "containers": [
     {
       "class_name": "Sandbox",
@@ -19,23 +25,24 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "Sandbox",
-        "class_name": "SANDBOX"
+        "name": "SANDBOX",
+        "class_name": "Sandbox"
       }
     ]
   },
-  // This triggers the creation of the Sandbox container manager
   "migrations": [
     {
-      "tag": "v1",
-      "new_classes": [
-        "Sandbox"
-      ]
+      "tag": "v3", // Incremented to force a fresh update
+      "new_sqlite_classes": ["Sandbox"]
     }
   ],
   "kv_namespaces": [
     {
       "binding": "STATE",
+      "id": "a1fd4c6e172c42bdbd1eac692345149d"
+    },
+    {
+      "binding": "KV",
       "id": "a1fd4c6e172c42bdbd1eac692345149d"
     }
   ],
