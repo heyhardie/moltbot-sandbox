@@ -26,14 +26,6 @@
       }
     ]
   },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_classes": [
-        "Sandbox"
-      ]
-    }
-  ],
   "containers": [
     {
       "class_name": "Sandbox",
