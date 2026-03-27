@@ -26,22 +26,24 @@ RUN npm install -g pnpm
 RUN npm install -g openclaw@2026.3.24 \
     && openclaw --version
 
-# Create OpenClaw directories
-# Legacy .clawdbot paths are kept for R2 backup migration
-RUN mkdir -p /root/.openclaw \
-    && mkdir -p /root/clawd \
-    && mkdir -p /root/clawd/skills
+# Create OpenClaw directories under /home (required for Sandbox SDK backup,
+# which only allows /workspace, /home, /tmp, /var/tmp).
+# Symlink from /root so OpenClaw's default paths still work.
+RUN mkdir -p /home/openclaw/.openclaw \
+    && mkdir -p /home/openclaw/clawd/skills \
+    && ln -sfn /home/openclaw/.openclaw /root/.openclaw \
+    && ln -sfn /home/openclaw/clawd /root/clawd
 
 # Copy startup script
-# Build cache bust: 2026-03-27-v34-sandbox-0.7.21
+# Build cache bust: 2026-03-27-v35-home-backup-path
 COPY start-openclaw.sh /usr/local/bin/start-openclaw.sh
 RUN chmod +x /usr/local/bin/start-openclaw.sh
 
 # Copy custom skills
-COPY skills/ /root/clawd/skills/
+COPY skills/ /home/openclaw/clawd/skills/
 
 # Set working directory
-WORKDIR /root/clawd
+WORKDIR /home/openclaw/clawd
 
 # Expose the gateway port
 EXPOSE 18789

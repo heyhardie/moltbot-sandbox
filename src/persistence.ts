@@ -87,7 +87,7 @@ export async function createSnapshot(sandbox: Sandbox, kv?: KVNamespace): Promis
   console.log('[persistence] Creating backup...');
   const t0 = Date.now();
   const handle = await sandbox.createBackup({
-    dir: '/root',
+    dir: '/home/openclaw',
     ttl: 604800, // 7 days
     excludes: [
       '*.lock',
