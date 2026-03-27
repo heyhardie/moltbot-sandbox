@@ -44,5 +44,8 @@
   ],
   "browser": {
     "binding": "BROWSER"
+  },
+  "observability": {
+    "enabled": true
   }
 }
