@@ -6,6 +6,7 @@ import type { Sandbox } from '@cloudflare/sandbox';
 export interface MoltbotEnv {
   Sandbox: DurableObjectNamespace<Sandbox>;
   ASSETS: Fetcher; // Assets binding for admin UI static files
+  STATE: KVNamespace; // KV for persisting backup handles across Worker isolate restarts
   BACKUP_BUCKET: R2Bucket; // R2 bucket for Sandbox SDK backup/restore
   // Cloudflare AI Gateway configuration (preferred)
   CF_AI_GATEWAY_ACCOUNT_ID?: string; // Cloudflare account ID for AI Gateway
@@ -42,6 +43,7 @@ export interface MoltbotEnv {
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
   WORKER_URL?: string; // Public URL of the worker (for CDP endpoint)
+  PUBLIC_URL?: string; // Public URL of this deployment (used for allowedOrigins in the container)
 }
 
 /**

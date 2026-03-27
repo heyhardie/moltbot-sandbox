@@ -107,6 +107,15 @@ adminApi.post('/devices/:requestId/approve', async (c) => {
     // Check for success indicators (case-insensitive, CLI outputs "Approved ...")
     const success = stdout.toLowerCase().includes('approved') || proc.exitCode === 0;
 
+    // Snapshot after approval so paired device persists across restarts
+    if (success) {
+      c.executionCtx.waitUntil(
+        createSnapshot(sandbox, c.env.STATE).catch((err) => {
+          console.error('[snapshot] Post-approval snapshot failed:', err);
+        }),
+      );
+    }
+
     return c.json({
       success,
       requestId,
@@ -183,6 +192,16 @@ adminApi.post('/devices/approve-all', async (c) => {
     }
 
     const approvedCount = results.filter((r) => r.success).length;
+
+    // Snapshot so paired devices persist across restarts
+    if (approvedCount > 0) {
+      c.executionCtx.waitUntil(
+        createSnapshot(sandbox, c.env.STATE).catch((err) => {
+          console.error('[snapshot] Post-approve-all snapshot failed:', err);
+        }),
+      );
+    }
+
     return c.json({
       approved: results.filter((r) => r.success).map((r) => r.requestId),
       failed: results.filter((r) => !r.success),
@@ -224,7 +243,7 @@ adminApi.post('/storage/sync', async (c) => {
   const sandbox = c.get('sandbox');
 
   try {
-    const handle = await createSnapshot(sandbox);
+    const handle = await createSnapshot(sandbox, c.env.STATE);
     return c.json({
       success: true,
       message: 'Snapshot created successfully',

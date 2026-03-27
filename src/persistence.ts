@@ -7,8 +7,8 @@ import type { Sandbox } from '@cloudflare/sandbox';
  * The Sandbox DO handles R2 upload/download internally via presigned URLs —
  * no credentials need to be passed into the container.
  *
- * Backup handles are stored in the Worker's own state (global variable)
- * since there's only one sandbox instance ("moltbot").
+ * Backup handles are stored in KV for durability across Worker isolate restarts,
+ * with an in-memory cache to avoid redundant KV reads within the same isolate.
  */
 
 export interface BackupHandle {
@@ -16,9 +16,11 @@ export interface BackupHandle {
   dir: string;
 }
 
+const KV_HANDLE_KEY = 'backup:handle';
+
 // In-memory cache: has the backup been restored in this Worker isolate lifetime?
 let restored = false;
-// In-memory cache of the last backup handle (avoids re-reading from sandbox storage)
+// In-memory cache of the last backup handle (avoids re-reading from KV on every request)
 let cachedHandle: BackupHandle | null = null;
 
 export function clearPersistenceCache(): void {
@@ -34,8 +36,21 @@ export function clearPersistenceCache(): void {
  * the FUSE mount is lost, but the Worker isolate is also recycled, so
  * `restored` resets to false and we re-restore on the next request.
  */
-export async function restoreIfNeeded(sandbox: Sandbox): Promise<void> {
+export async function restoreIfNeeded(sandbox: Sandbox, kv?: KVNamespace): Promise<void> {
   if (restored) return;
+
+  // If not cached in memory, try loading from KV (survives isolate restarts)
+  if (!cachedHandle && kv) {
+    try {
+      const stored = await kv.get<BackupHandle>(KV_HANDLE_KEY, 'json');
+      if (stored) {
+        cachedHandle = stored;
+        console.log(`[persistence] Loaded backup handle ${cachedHandle.id} from KV`);
+      }
+    } catch (err) {
+      console.error('[persistence] Failed to read handle from KV:', err);
+    }
+  }
 
   if (!cachedHandle) {
     console.log('[persistence] No backup handle cached, skipping restore');
@@ -53,6 +68,9 @@ export async function restoreIfNeeded(sandbox: Sandbox): Promise<void> {
     if (msg.includes('BACKUP_EXPIRED') || msg.includes('BACKUP_NOT_FOUND')) {
       console.log(`[persistence] Backup ${cachedHandle.id} expired/gone, clearing`);
       cachedHandle = null;
+      if (kv) {
+        await kv.delete(KV_HANDLE_KEY).catch(() => {});
+      }
     } else {
       console.error(`[persistence] Restore failed:`, err);
       throw err;
@@ -63,9 +81,9 @@ export async function restoreIfNeeded(sandbox: Sandbox): Promise<void> {
 
 /**
  * Create a new snapshot of /root (config + workspace + skills).
- * Stores the handle in memory for future restoreIfNeeded() calls.
+ * Stores the handle in memory and in KV for durability across isolate restarts.
  */
-export async function createSnapshot(sandbox: Sandbox): Promise<BackupHandle> {
+export async function createSnapshot(sandbox: Sandbox, kv?: KVNamespace): Promise<BackupHandle> {
   console.log('[persistence] Creating backup...');
   const t0 = Date.now();
   const handle = await sandbox.createBackup({
@@ -82,6 +100,17 @@ export async function createSnapshot(sandbox: Sandbox): Promise<BackupHandle> {
   });
   cachedHandle = handle;
   console.log(`[persistence] Backup ${handle.id} created in ${Date.now() - t0}ms`);
+
+  // Persist handle to KV so it survives Worker isolate restarts
+  if (kv) {
+    try {
+      await kv.put(KV_HANDLE_KEY, JSON.stringify(handle));
+      console.log(`[persistence] Backup handle ${handle.id} saved to KV`);
+    } catch (err) {
+      console.error('[persistence] Failed to save handle to KV:', err);
+    }
+  }
+
   return handle;
 }
 
