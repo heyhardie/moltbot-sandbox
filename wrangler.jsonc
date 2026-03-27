@@ -6,6 +6,13 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  // This section prevents your variables from disappearing
+  "vars": {
+    "PUBLIC_URL": "https://miracle.hardie.org",
+    "HOST": "0.0.0.0",
+    "PORT": "18789",
+    "NODE_VERSION": "22.17.0"
+  },
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
@@ -17,13 +24,12 @@
       "image": "./Dockerfile",
       "instance_type": "standard-1",
       "max_instances": 1
-      // port and protocol removed to stop warnings
     }
   ],
   "durable_objects": {
     "bindings": [
       {
-        "name": "SANDBOX", // Corrected to ALL CAPS
+        "name": "SANDBOX",
         "class_name": "Sandbox"
       }
     ]
@@ -31,7 +37,7 @@
   "migrations": [
     {
       "tag": "v5" 
-      // Note: new_classes is removed because the class already exists
+      // new_classes is removed because the class is already live
     }
   ],
   "kv_namespaces": [
