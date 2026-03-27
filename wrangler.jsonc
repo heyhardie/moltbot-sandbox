@@ -16,7 +16,9 @@
     "PUBLIC_URL": "https://miracle.hardie.org",
     "NODE_ENV": "production",
     "HOST": "0.0.0.0",
-    "PORT": "18789"
+    "PORT": "18789",
+    "BACKUP_BUCKET_NAME": "openclaw-memory",
+    "CLOUDFLARE_ACCOUNT_ID": "901aa9c181df88b8b2b1fc44512abfd9"
   },
   "durable_objects": {
     "bindings": [
