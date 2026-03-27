@@ -215,26 +215,17 @@ adminApi.post('/devices/approve-all', async (c) => {
 
 // GET /api/admin/storage - Get backup/restore status
 adminApi.get('/storage', async (c) => {
-  const hasCredentials = !!(
-    c.env.R2_ACCESS_KEY_ID &&
-    c.env.R2_SECRET_ACCESS_KEY &&
-    c.env.CLOUDFLARE_ACCOUNT_ID
-  );
-
-  const missing: string[] = [];
-  if (!c.env.R2_ACCESS_KEY_ID) missing.push('R2_ACCESS_KEY_ID');
-  if (!c.env.R2_SECRET_ACCESS_KEY) missing.push('R2_SECRET_ACCESS_KEY');
-  if (!c.env.CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_ACCOUNT_ID');
-
+  // Persistence uses the BACKUP_BUCKET R2 binding (configured in wrangler.jsonc).
+  // The old rclone credentials (R2_ACCESS_KEY_ID, etc.) are no longer needed.
+  const configured = !!c.env.BACKUP_BUCKET;
   const handle = getCachedHandle();
 
   return c.json({
-    configured: hasCredentials,
-    missing: missing.length > 0 ? missing : undefined,
+    configured,
     lastBackupId: handle?.id ?? null,
-    message: hasCredentials
+    message: configured
       ? 'R2 storage is configured. Your data will persist across container restarts via SDK snapshots.'
-      : 'R2 storage is not configured. Paired devices and conversations will be lost when the container restarts.',
+      : 'R2 storage is not configured. Add a BACKUP_BUCKET R2 binding to wrangler.jsonc.',
   });
 });
 

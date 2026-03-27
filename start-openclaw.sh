@@ -183,7 +183,7 @@ if (process.env.DISCORD_BOT_TOKEN) {
     }
     config.channels.discord = {
         ...config.channels.discord,
-        token: process.env.DISCORD_BOT_TOKEN,
+        token: { source: 'env', provider: 'default', id: 'DISCORD_BOT_TOKEN' },
         enabled: true,
         dm: dm,
     };
