@@ -32,8 +32,8 @@
   },
   "migrations": [
     {
-      "tag": "v3", // Incremented to force a fresh update
-      "new_sqlite_classes": ["Sandbox"]
+      "tag": "v4", // Incremented to force a fresh update
+      "new_classes": ["Sandbox"]
     }
   ],
   "kv_namespaces": [
