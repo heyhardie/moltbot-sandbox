@@ -1,39 +1,47 @@
-# 1. Use the most stable Node 22 image for AI agents
-FROM node:22.17.0-bookworm-slim
+FROM docker.io/cloudflare/sandbox:0.7.0
 
-# 2. Install essential system tools for building native modules
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Install Node.js 22 (required by OpenClaw)
+# The base image has Node 20, we need to replace it with Node 22
+# Using direct binary download for reliability
+# Note: rclone is no longer needed — persistence uses Sandbox SDK backup/restore API
+ENV NODE_VERSION=22.13.1
+RUN ARCH="$(dpkg --print-architecture)" \
+    && case "${ARCH}" in \
+         amd64) NODE_ARCH="x64" ;; \
+         arm64) NODE_ARCH="arm64" ;; \
+         *) echo "Unsupported architecture: ${ARCH}" >&2; exit 1 ;; \
+       esac \
+    && apt-get update && apt-get install -y xz-utils ca-certificates \
+    && curl -fsSLk https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node --version \
+    && npm --version
 
-# 3. Create and set the working directory
-WORKDIR /app
+# Install pnpm globally
+RUN npm install -g pnpm
 
-# 4. Copy dependency files first (to optimize build caching)
-# We use a wildcard to ensure it works even if package-lock is missing
-COPY package*.json ./
+# Install OpenClaw (formerly clawdbot/moltbot)
+# Pin to specific version for reproducible builds
+RUN npm install -g openclaw@2026.3.23-2 \
+    && openclaw --version
 
-# 5. Install ALL dependencies (needed for the build step)
-RUN npm install
+# Create OpenClaw directories
+# Legacy .clawdbot paths are kept for R2 backup migration
+RUN mkdir -p /root/.openclaw \
+    && mkdir -p /root/clawd \
+    && mkdir -p /root/clawd/skills
 
-# 6. Copy the rest of the application source code
-COPY . .
+# Copy startup script
+# Build cache bust: 2026-03-25-v31-sdk-snapshots
+COPY start-openclaw.sh /usr/local/bin/start-openclaw.sh
+RUN chmod +x /usr/local/bin/start-openclaw.sh
 
-# 7. BUILD the project
-# This step creates the 'dist' folder for the backend 
-# and the 'dist/client' folder for the frontend UI.
-RUN npm run build
+# Copy custom skills
+COPY skills/ /root/clawd/skills/
 
-# 8. Set environment variables for the container runtime
-ENV NODE_ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=18789
+# Set working directory
+WORKDIR /root/clawd
 
-# 9. Expose the internal port for Cloudflare's health check
+# Expose the gateway port
 EXPOSE 18789
-
-# 10. Start the application using the compiled javascript
-# Note: We use the compiled dist/index.js, not the src/index.ts
-CMD ["node", "dist/index.js"]
