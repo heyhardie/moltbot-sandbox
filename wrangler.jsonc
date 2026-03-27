@@ -18,6 +18,12 @@
     "HOST": "0.0.0.0",
     "PORT": "18789"
   },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Sandbox"]
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {
