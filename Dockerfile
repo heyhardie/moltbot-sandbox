@@ -1,18 +1,11 @@
-# Use the official Node 22 image (which is 22.17.0+ as of now)
-FROM node:22-bookworm-slim
-
-# Set the working directory
+FROM node:22.17.0-bookworm-slim
 WORKDIR /app
-
-# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production
-
-# Copy the rest of the application code
+RUN npm install
 COPY . .
-
-# OpenClaw usually runs on port 18789
+# This generates the files that the Worker's "ASSETS" binding needs
+RUN npm run build
 EXPOSE 18789
-
-# Start the Gateway
-CMD ["npm", "start"]
+ENV HOST=0.0.0.0
+ENV PORT=18789
+CMD ["node", "dist/index.js"]
