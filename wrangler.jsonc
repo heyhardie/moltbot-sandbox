@@ -18,6 +18,14 @@
     "HOST": "0.0.0.0",
     "PORT": "18789"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "Sandbox",
+        "class_name": "Sandbox"
+      }
+    ]
+  },
   "containers": [
     {
       "class_name": "Sandbox",
