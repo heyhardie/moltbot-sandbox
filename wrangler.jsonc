@@ -40,7 +40,8 @@
   ],
   "r2_buckets": [
     { "binding": "MOLTBOT_BUCKET", "bucket_name": "openclaw-memory" },
-    { "binding": "MEMORY_BUCKET", "bucket_name": "openclaw-memory" }
+    { "binding": "MEMORY_BUCKET", "bucket_name": "openclaw-memory" },
+    { "binding": "BACKUP_BUCKET", "bucket_name": "openclaw-memory" }
   ],
   "browser": {
     "binding": "BROWSER"
