@@ -6,7 +6,7 @@ import {
   findExistingMoltbotProcess,
   waitForProcess,
 } from '../gateway';
-import { createSnapshot, getCachedHandle } from '../persistence';
+import { createSnapshot, getCachedHandle, setCachedHandle, type BackupHandle } from '../persistence';
 
 // CLI commands can take 10-15 seconds to complete due to WebSocket connection overhead
 const CLI_TIMEOUT_MS = 20000;
@@ -216,9 +216,21 @@ adminApi.post('/devices/approve-all', async (c) => {
 // GET /api/admin/storage - Get backup/restore status
 adminApi.get('/storage', async (c) => {
   // Persistence uses the BACKUP_BUCKET R2 binding (configured in wrangler.jsonc).
-  // The old rclone credentials (R2_ACCESS_KEY_ID, etc.) are no longer needed.
   const configured = !!c.env.BACKUP_BUCKET;
-  const handle = getCachedHandle();
+  let handle = getCachedHandle();
+
+  // If not in memory, try loading from KV (survives isolate restarts)
+  if (!handle && c.env.STATE) {
+    try {
+      const stored = await c.env.STATE.get<BackupHandle>('backup:handle', 'json');
+      if (stored) {
+        setCachedHandle(stored);
+        handle = stored;
+      }
+    } catch (err) {
+      console.error('[storage-status] Failed to read handle from KV:', err);
+    }
+  }
 
   return c.json({
     configured,
