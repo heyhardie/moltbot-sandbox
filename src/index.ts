@@ -478,4 +478,19 @@ app.all('*', async (c) => {
 
 export default {
   fetch: app.fetch,
+
+  // Cron trigger: runs every 5 minutes to keep the gateway alive.
+  // If the gateway process has crashed, this restarts it automatically.
+  async scheduled(_event: ScheduledEvent, env: MoltbotEnv, ctx: ExecutionContext) {
+    const options = buildSandboxOptions(env);
+    const sandbox = getSandbox(env.Sandbox, 'moltbot', options);
+
+    try {
+      await restoreIfNeeded(sandbox, env.STATE);
+      await ensureMoltbotGateway(sandbox, env);
+      console.log('[cron] Gateway is running');
+    } catch (err) {
+      console.error('[cron] Failed to ensure gateway:', err);
+    }
+  },
 };
