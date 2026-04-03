@@ -190,6 +190,13 @@ if (process.env.DISCORD_BOT_TOKEN) {
         ...config.channels.discord,
         token: { source: 'env', provider: 'default', id: 'DISCORD_BOT_TOKEN' },
         enabled: true,
+        groupPolicy: 'allowlist',
+        guilds: [
+            {
+                id: '1487163206471254228',
+                channels: ['1487163207079690434'],
+            },
+        ],
         dm: dm,
     };
 }
