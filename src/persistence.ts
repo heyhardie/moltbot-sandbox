@@ -14,6 +14,7 @@ import type { Sandbox } from '@cloudflare/sandbox';
 export interface BackupHandle {
   id: string;
   dir: string;
+  createdAt?: string; // ISO timestamp, set when the backup is created
 }
 
 const KV_HANDLE_KEY = 'backup:handle';
@@ -86,7 +87,7 @@ export async function restoreIfNeeded(sandbox: Sandbox, kv?: KVNamespace): Promi
 export async function createSnapshot(sandbox: Sandbox, kv?: KVNamespace): Promise<BackupHandle> {
   console.log('[persistence] Creating backup...');
   const t0 = Date.now();
-  const handle = await sandbox.createBackup({
+  const rawHandle = await sandbox.createBackup({
     dir: '/home/openclaw',
     ttl: 604800, // 7 days
     excludes: [
@@ -98,6 +99,7 @@ export async function createSnapshot(sandbox: Sandbox, kv?: KVNamespace): Promis
       '.config/rclone',
     ],
   });
+  const handle: BackupHandle = { ...rawHandle, createdAt: new Date().toISOString() };
   cachedHandle = handle;
   console.log(`[persistence] Backup ${handle.id} created in ${Date.now() - t0}ms`);
 

@@ -234,7 +234,7 @@ adminApi.get('/storage', async (c) => {
 
   return c.json({
     configured,
-    lastBackupId: handle?.id ?? null,
+    lastSync: handle?.createdAt ?? null,
     message: configured
       ? 'R2 storage is configured. Your data will persist across container restarts via SDK snapshots.'
       : 'R2 storage is not configured. Add a BACKUP_BUCKET R2 binding to wrangler.jsonc.',
@@ -250,7 +250,7 @@ adminApi.post('/storage/sync', async (c) => {
     return c.json({
       success: true,
       message: 'Snapshot created successfully',
-      backupId: handle.id,
+      lastSync: handle.createdAt ?? new Date().toISOString(),
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
