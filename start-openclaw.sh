@@ -177,7 +177,12 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 // Merge with existing config so user-configured fields (guilds, channels, etc.) survive restarts.
 if (process.env.DISCORD_BOT_TOKEN) {
     const dmPolicy = process.env.DISCORD_DM_POLICY || 'pairing';
-    const dm = { policy: dmPolicy };
+    // Merge dm so that stored pairing/allowFrom state survives restarts
+    const existingDm = config.channels.discord && config.channels.discord.dm || {};
+    const dm = {
+        ...existingDm,
+        policy: dmPolicy,
+    };
     if (dmPolicy === 'open') {
         dm.allowFrom = ['*'];
     }
