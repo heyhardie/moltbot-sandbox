@@ -66,7 +66,7 @@ export async function restoreIfNeeded(sandbox: Sandbox, kv?: KVNamespace): Promi
     console.log(`[persistence] Restore complete in ${Date.now() - t0}ms`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('BACKUP_EXPIRED') || msg.includes('BACKUP_NOT_FOUND')) {
+    if (msg.includes('BACKUP_EXPIRED') || msg.includes('BackupExpiredError') || msg.includes('BACKUP_NOT_FOUND') || msg.includes('BackupNotFoundError')) {
       console.log(`[persistence] Backup ${cachedHandle.id} expired/gone, clearing`);
       cachedHandle = null;
       if (kv) {
