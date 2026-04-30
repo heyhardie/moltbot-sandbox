@@ -35,7 +35,7 @@ RUN mkdir -p /home/openclaw/.openclaw \
     && ln -sfn /home/openclaw/clawd /root/clawd
 
 # Copy startup script
-# Build cache bust: 2026-03-27-v35-home-backup-path
+# Build cache bust: 2026-04-30-v36-remove-discord-groupPolicy-hang
 COPY start-openclaw.sh /usr/local/bin/start-openclaw.sh
 RUN chmod +x /usr/local/bin/start-openclaw.sh
 

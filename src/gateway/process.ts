@@ -80,6 +80,9 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
       } catch (killError) {
         console.log('Failed to kill process:', killError);
       }
+      // Brief wait for the killed process to clear the container's process list
+      // so start-openclaw.sh's pgrep check doesn't see it as "already running".
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 

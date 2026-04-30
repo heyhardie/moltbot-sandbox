@@ -174,7 +174,12 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 
 // Discord configuration
 // Discord uses a nested dm object: dm.policy, dm.allowFrom (per DiscordDmConfig)
-// Merge with existing config so user-configured fields (guilds, channels, etc.) survive restarts.
+// Merge with existing config so user-configured fields survive restarts.
+//
+// groupPolicy/guilds are intentionally NOT set here — they caused a startup hang
+// where openclaw gateway blocked indefinitely during Discord guild verification.
+// Without groupPolicy, the Discord channel runs in default (unrestricted) mode.
+// Guild-level access control can be added back once the hang root cause is confirmed.
 if (process.env.DISCORD_BOT_TOKEN) {
     const dmPolicy = process.env.DISCORD_DM_POLICY || 'pairing';
     // Merge dm so that stored pairing/allowFrom state survives restarts
@@ -186,19 +191,15 @@ if (process.env.DISCORD_BOT_TOKEN) {
     if (dmPolicy === 'open') {
         dm.allowFrom = ['*'];
     }
+    // Strip old groupPolicy/guilds from backup config so they don't cause a hang.
+    const { groupPolicy: _gp, guilds: _g, ...existingDiscord } = config.channels.discord || {};
     config.channels.discord = {
-        ...config.channels.discord,
+        ...existingDiscord,
         token: { source: 'env', provider: 'default', id: 'DISCORD_BOT_TOKEN' },
         enabled: true,
-        groupPolicy: 'allowlist',
-        guilds: [
-            {
-                id: '1487163206471254228',
-                channels: ['1487163207079690434'],
-            },
-        ],
         dm: dm,
     };
+    console.log('[startup] Discord configured (no guild restriction, dm policy:', dmPolicy + ')');
 }
 
 // Slack configuration
