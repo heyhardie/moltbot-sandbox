@@ -183,6 +183,14 @@
             return;
           }
 
+          // Gateway is manually suspended
+          if (data.status === 'suspended') {
+            titleEl.textContent = 'Gateway is suspended';
+            statusEl.innerHTML = 'Visit <a href="/_admin/" style="color:#60a5fa">/_admin/</a> and click <strong>Restart Gateway</strong> to resume.';
+            document.querySelector('.spinner').style.display = 'none';
+            return; // Stop polling
+          }
+
           // Update status message based on state
           if (data.status === 'not_running') {
             notRunningCount++;

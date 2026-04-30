@@ -4,6 +4,7 @@ import {
   approveDevice,
   approveAllDevices,
   restartGateway,
+  suspendGateway,
   getStorageStatus,
   triggerSync,
   AuthError,
@@ -53,6 +54,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [restartInProgress, setRestartInProgress] = useState(false);
+  const [suspendInProgress, setSuspendInProgress] = useState(false);
   const [syncInProgress, setSyncInProgress] = useState(false);
 
   const fetchDevices = useCallback(async () => {
@@ -142,7 +144,6 @@ export default function AdminPage() {
       const result = await restartGateway();
       if (result.success) {
         setError(null);
-        // Show success message briefly
         alert('Gateway restart initiated. Clients will reconnect automatically.');
       } else {
         setError(result.error || 'Failed to restart gateway');
@@ -151,6 +152,32 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : 'Failed to restart gateway');
     } finally {
       setRestartInProgress(false);
+    }
+  };
+
+  const handleSuspendGateway = async () => {
+    if (
+      !confirm(
+        'Suspend the gateway? It will stop running and the cron watchdog will not restart it. ' +
+        'Resume with "Restart Gateway". You can also set SANDBOX_SLEEP_AFTER for automatic sleep.',
+      )
+    ) {
+      return;
+    }
+
+    setSuspendInProgress(true);
+    try {
+      const result = await suspendGateway();
+      if (result.success) {
+        setError(null);
+        alert('Gateway suspended. Visit this page and click "Restart Gateway" to resume.');
+      } else {
+        setError(result.error || 'Failed to suspend gateway');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to suspend gateway');
+    } finally {
+      setSuspendInProgress(false);
     }
   };
 
@@ -232,18 +259,31 @@ export default function AdminPage() {
       <section className="devices-section gateway-section">
         <div className="section-header">
           <h2>Gateway Controls</h2>
-          <button
-            className="btn btn-danger"
-            onClick={handleRestartGateway}
-            disabled={restartInProgress}
-          >
-            {restartInProgress && <ButtonSpinner />}
-            {restartInProgress ? 'Restarting...' : 'Restart Gateway'}
-          </button>
+          <div className="header-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={handleSuspendGateway}
+              disabled={suspendInProgress || restartInProgress}
+              title="Stop the gateway and prevent the cron watchdog from restarting it. Saves compute cost when not in use."
+            >
+              {suspendInProgress && <ButtonSpinner />}
+              {suspendInProgress ? 'Suspending...' : 'Suspend'}
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleRestartGateway}
+              disabled={restartInProgress || suspendInProgress}
+            >
+              {restartInProgress && <ButtonSpinner />}
+              {restartInProgress ? 'Restarting...' : 'Restart Gateway'}
+            </button>
+          </div>
         </div>
         <p className="hint">
-          Restart the gateway to apply configuration changes or recover from errors. All connected
-          clients will be temporarily disconnected.
+          <strong>Suspend</strong> stops the gateway and blocks the cron watchdog — use this to
+          reduce compute cost when you're not using the bot. <strong>Restart Gateway</strong>{' '}
+          resumes from suspend or applies config changes. For automatic sleep when idle, set the{' '}
+          <code>SANDBOX_SLEEP_AFTER</code> secret (e.g. <code>1h</code>).
         </p>
       </section>
 

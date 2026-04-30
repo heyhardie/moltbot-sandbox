@@ -113,6 +113,19 @@ export async function restartGateway(): Promise<RestartGatewayResponse> {
   });
 }
 
+export interface SuspendGatewayResponse {
+  success: boolean;
+  message?: string;
+  wasRunning?: boolean;
+  error?: string;
+}
+
+export async function suspendGateway(): Promise<SuspendGatewayResponse> {
+  return apiRequest<SuspendGatewayResponse>('/gateway/suspend', {
+    method: 'POST',
+  });
+}
+
 export interface StorageStatusResponse {
   configured: boolean;
   missing?: string[];

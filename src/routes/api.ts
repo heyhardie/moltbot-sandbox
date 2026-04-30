@@ -270,6 +270,11 @@ adminApi.post('/gateway/restart', async (c) => {
   const sandbox = c.get('sandbox');
 
   try {
+    // Clear suspended flag so cron watchdog resumes
+    if (c.env.STATE) {
+      await c.env.STATE.delete('gateway:suspended').catch(() => {});
+    }
+
     // Find and kill the existing gateway process
     const existingProcess = await findExistingMoltbotProcess(sandbox);
 
@@ -296,6 +301,36 @@ adminApi.post('/gateway/restart', async (c) => {
         ? 'Gateway process killed, new instance starting...'
         : 'No existing process found, starting new instance...',
       previousProcessId: existingProcess?.id,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// POST /api/admin/gateway/suspend - Stop the gateway and prevent cron from restarting it
+adminApi.post('/gateway/suspend', async (c) => {
+  const sandbox = c.get('sandbox');
+
+  try {
+    // Set suspended flag so cron watchdog skips auto-restart
+    if (c.env.STATE) {
+      await c.env.STATE.put('gateway:suspended', 'true');
+    }
+
+    // Kill the existing gateway process (if any)
+    const existingProcess = await findExistingMoltbotProcess(sandbox);
+    if (existingProcess) {
+      console.log('[suspend] Killing gateway process:', existingProcess.id);
+      await existingProcess.kill().catch((err: unknown) => {
+        console.error('[suspend] Failed to kill process:', err);
+      });
+    }
+
+    return c.json({
+      success: true,
+      message: 'Gateway suspended. Use Restart Gateway to resume.',
+      wasRunning: !!existingProcess,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

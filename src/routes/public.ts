@@ -34,6 +34,18 @@ publicRoutes.get('/logo-small.png', (c) => {
 publicRoutes.get('/api/status', async (c) => {
   const sandbox = c.get('sandbox');
 
+  // Check suspended flag first (fast KV read, no container wake)
+  if (c.env.STATE) {
+    try {
+      const suspended = await c.env.STATE.get('gateway:suspended');
+      if (suspended === 'true') {
+        return c.json({ ok: false, status: 'suspended' });
+      }
+    } catch {
+      // KV unavailable — fall through and treat as not suspended
+    }
+  }
+
   try {
     const process = await findExistingMoltbotProcess(sandbox);
     if (!process) {

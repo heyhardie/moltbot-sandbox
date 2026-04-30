@@ -479,9 +479,24 @@ app.all('*', async (c) => {
 export default {
   fetch: app.fetch,
 
-  // Cron trigger: runs every 5 minutes to keep the gateway alive.
+  // Cron trigger: runs every 30 minutes to keep the gateway alive.
   // If the gateway process has crashed, this restarts it automatically.
+  // Skips restart entirely when the gateway has been manually suspended.
   async scheduled(_event: ScheduledEvent, env: MoltbotEnv, ctx: ExecutionContext) {
+    // Check suspended flag before touching the container at all.
+    // This is just a KV read — it does NOT wake the container.
+    if (env.STATE) {
+      try {
+        const suspended = await env.STATE.get('gateway:suspended');
+        if (suspended === 'true') {
+          console.log('[cron] Gateway is suspended, skipping auto-restart');
+          return;
+        }
+      } catch {
+        // KV unavailable — proceed normally
+      }
+    }
+
     const options = buildSandboxOptions(env);
     const sandbox = getSandbox(env.Sandbox, 'moltbot', options);
 
