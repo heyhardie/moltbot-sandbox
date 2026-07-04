@@ -180,3 +180,13 @@ export async function getLastBackupId(bucket: R2Bucket): Promise<string | null> 
   const handle = await getStoredHandle(bucket);
   return handle?.id ?? null;
 }
+
+/**
+ * When the backup handle was last written, for admin UI display. Read from
+ * the R2 object's own `uploaded` metadata rather than storing a separate
+ * timestamp, since it's always in sync with the handle by construction.
+ */
+export async function getLastBackupTime(bucket: R2Bucket): Promise<string | null> {
+  const obj = await bucket.head(HANDLE_KEY);
+  return obj?.uploaded?.toISOString() ?? null;
+}
