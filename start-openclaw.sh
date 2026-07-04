@@ -210,6 +210,15 @@ config.agents = config.agents || {};
 config.agents.defaults = config.agents.defaults || {};
 config.agents.defaults.model = { primary: 'anthropic/claude-sonnet-5' };
 
+// Memory search's default embedding provider is OpenAI, which this deployment
+// has no key for (Anthropic-only, by design, to keep to a single billing
+// relationship). Left unset/"auto", memory-core still tries OpenAI and fails
+// with "No API key found for provider openai" on every index/search. Setting
+// "none" explicitly opts into full-text-search-only recall (no embedding API,
+// no cost) instead of a broken semantic search.
+config.agents.defaults.memorySearch = config.agents.defaults.memorySearch || {};
+config.agents.defaults.memorySearch.provider = 'none';
+
 // openclaw 2026.6.11's built-in Anthropic catalog predates Claude Sonnet 5,
 // so the model must be registered explicitly. models.mode='merge' merges the
 // providers MAP, but each provider entry replaces the built-in wholesale —
