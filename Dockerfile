@@ -22,18 +22,30 @@ RUN ARCH="$(dpkg --print-architecture)" \
 
 # Install OpenClaw
 # Pin to specific version for reproducible builds
-RUN npm install -g openclaw@2026.3.23-2 \
+RUN npm install -g openclaw@2026.6.11 \
     && openclaw --version
 
 # Use /home/openclaw as the home directory instead of /root.
 # The Sandbox SDK backup API only allows directories under /home, /workspace,
 # /tmp, or /var/tmp — not /root.
 ENV HOME=/home/openclaw
+# NOTE: the base image already ships /root/.openclaw (containing state/), so
+# a plain `ln -s /home/openclaw/.openclaw /root/.openclaw` lands INSIDE it as
+# /root/.openclaw/.openclaw instead of replacing it. Guard the link creation
+# so it either becomes a real symlink or is skipped; nothing may rely on
+# /root/.openclaw resolving to the config dir.
 RUN mkdir -p /home/openclaw/.openclaw \
     && mkdir -p /home/openclaw/clawd \
     && mkdir -p /home/openclaw/clawd/skills \
-    && ln -s /home/openclaw/.openclaw /root/.openclaw \
-    && ln -s /home/openclaw/clawd /root/clawd
+    && rm -f /root/.openclaw/.openclaw \
+    && { [ -e /root/.openclaw ] || ln -s /home/openclaw/.openclaw /root/.openclaw; } \
+    && { [ -e /root/clawd ] || ln -s /home/openclaw/clawd /root/clawd; }
+
+# Discord channel support is a separate plugin as of openclaw 2026.6.x
+# (no longer bundled with the core npm package). Installed at build time
+# into ~/.openclaw so it survives container rebuilds; enabled via config
+# in start-openclaw.sh.
+RUN openclaw plugins install @openclaw/discord
 
 # Copy startup script
 # Build cache bust: 2026-03-26-v32-home-dir

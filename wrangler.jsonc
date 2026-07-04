@@ -49,12 +49,6 @@
       },
     ],
   },
-  "migrations": [
-    {
-      "new_sqlite_classes": ["Sandbox"],
-      "tag": "v1",
-    },
-  ],
   // R2 bucket for Sandbox SDK backup/restore (squashfs snapshots).
   // The binding name BACKUP_BUCKET is required by @cloudflare/sandbox.
   "r2_buckets": [
@@ -63,6 +57,14 @@
       "bucket_name": "moltbot-data",
     },
   ],
+  // The Sandbox SDK's createBackup()/restoreBackup() additionally need the
+  // bucket NAME (not just the binding) to generate presigned URLs, alongside
+  // the R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / CLOUDFLARE_ACCOUNT_ID
+  // secrets. Without it every backup fails with InvalidBackupConfigError and
+  // restores are silent no-ops (no handle is ever stored).
+  "vars": {
+    "BACKUP_BUCKET_NAME": "moltbot-data",
+  },
 
   // Browser Rendering binding for CDP shim
   "browser": {
@@ -74,7 +76,7 @@
   // Adjust the interval to match your needs. Every 1 minute ensures
   // jobs are never missed by more than 1 minute.
   "triggers": {
-    "crons": ["* * * * *"],
+    "crons": ["*/30 * * * *"],
   },
   // Secrets to configure via `wrangler secret put`:
   //

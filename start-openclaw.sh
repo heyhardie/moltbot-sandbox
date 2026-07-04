@@ -17,10 +17,17 @@ if pgrep -f "openclaw gateway" > /dev/null 2>&1; then
     exit 0
 fi
 
-CONFIG_DIR="/root/.openclaw"
+# Config must live under /home/openclaw: that's the HOME the gateway resolves
+# ~/.openclaw against, and the only tree the Sandbox SDK backup snapshots.
+# /root/.openclaw is NOT a symlink to it — the base image ships /root/.openclaw
+# (with state/), so the Dockerfile's ln -s landed inside it as a nested link.
+# Patching /root/.openclaw/openclaw.json silently produced a config the
+# gateway never read.
+export HOME=/home/openclaw
+CONFIG_DIR="/home/openclaw/.openclaw"
 CONFIG_FILE="$CONFIG_DIR/openclaw.json"
-WORKSPACE_DIR="/root/clawd"
-SKILLS_DIR="/root/clawd/skills"
+WORKSPACE_DIR="/home/openclaw/clawd"
+SKILLS_DIR="/home/openclaw/clawd/skills"
 
 echo "Config directory: $CONFIG_DIR"
 
@@ -37,10 +44,10 @@ if [ ! -f "$CONFIG_FILE" ]; then
     # so we only pass --auth-choice, never the key itself, to avoid
     # exposing secrets in process arguments visible via ps/proc.
     AUTH_ARGS=""
-    if [ -n "$CLOUDFLARE_AI_GATEWAY_API_KEY" ] && [ -n "$CF_AI_GATEWAY_ACCOUNT_ID" ] && [ -n "$CF_AI_GATEWAY_GATEWAY_ID" ]; then
-        AUTH_ARGS="--auth-choice cloudflare-ai-gateway-api-key --cloudflare-ai-gateway-account-id $CF_AI_GATEWAY_ACCOUNT_ID --cloudflare-ai-gateway-gateway-id $CF_AI_GATEWAY_GATEWAY_ID"
-    elif [ -n "$ANTHROPIC_API_KEY" ]; then
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
         AUTH_ARGS="--auth-choice apiKey"
+    elif [ -n "$CLOUDFLARE_AI_GATEWAY_API_KEY" ] && [ -n "$CF_AI_GATEWAY_ACCOUNT_ID" ] && [ -n "$CF_AI_GATEWAY_GATEWAY_ID" ]; then
+        AUTH_ARGS="--auth-choice cloudflare-ai-gateway-api-key --cloudflare-ai-gateway-account-id $CF_AI_GATEWAY_ACCOUNT_ID --cloudflare-ai-gateway-gateway-id $CF_AI_GATEWAY_GATEWAY_ID"
     elif [ -n "$OPENAI_API_KEY" ]; then
         AUTH_ARGS="--auth-choice openai-api-key"
     fi
@@ -70,7 +77,7 @@ fi
 node << 'EOFPATCH'
 const fs = require('fs');
 
-const configPath = '/root/.openclaw/openclaw.json';
+const configPath = '/home/openclaw/.openclaw/openclaw.json';
 console.log('Patching config at:', configPath);
 let config = {};
 
@@ -88,22 +95,22 @@ config.gateway.port = 18789;
 config.gateway.mode = 'local';
 config.gateway.trustedProxies = ['10.1.0.0'];
 
-config.gateway.controlUi = config.gateway.controlUi || {};
-config.gateway.controlUi.allowedOrigins = ['*'];
-
 if (process.env.OPENCLAW_GATEWAY_TOKEN) {
     config.gateway.auth = config.gateway.auth || {};
     config.gateway.auth.token = process.env.OPENCLAW_GATEWAY_TOKEN;
 }
 
-// Allow any origin to connect to the gateway control UI.
+// Allow the public Worker origin(s) to connect to the gateway control UI.
 // The gateway runs inside a Cloudflare Container behind the Worker, which
-// proxies requests from the public workers.dev domain. Without this,
-// openclaw >= 2026.2.26 rejects WebSocket connections because the browser's
-// origin (https://....workers.dev) doesn't match the gateway's localhost.
+// proxies requests from the public domain. Without this, openclaw rejects
+// WebSocket connections because the browser's origin doesn't match the
+// gateway's localhost. openclaw >= 2026.6 requires exact origins — wildcard
+// '*' is no longer honored.
 // Security is handled by CF Access + gateway token auth, not origin checks.
 config.gateway.controlUi = config.gateway.controlUi || {};
-config.gateway.controlUi.allowedOrigins = ['*'];
+const controlUiOrigins = ['https://miracle.hardie.org'];
+if (process.env.WORKER_URL && !controlUiOrigins.includes(process.env.WORKER_URL)) controlUiOrigins.push(process.env.WORKER_URL);
+config.gateway.controlUi.allowedOrigins = controlUiOrigins;
 
 if (process.env.OPENCLAW_DEV_MODE === 'true') {
     config.gateway.controlUi = config.gateway.controlUi || {};
@@ -178,18 +185,49 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 }
 
 // Discord configuration
-// Discord uses a nested dm object: dm.policy, dm.allowFrom (per DiscordDmConfig)
+// openclaw >= 2026.6 uses flat dmPolicy/allowFrom keys (the old nested
+// dm.policy shape fails config validation and silently drops the channel).
+// The discord channel is also a plugin in >= 2026.6 (installed in the
+// Dockerfile) and must be enabled here for the channel to load.
 if (process.env.DISCORD_BOT_TOKEN) {
     const dmPolicy = process.env.DISCORD_DM_POLICY || 'pairing';
-    const dm = { policy: dmPolicy };
-    if (dmPolicy === 'open') {
-        dm.allowFrom = ['*'];
-    }
     config.channels.discord = {
         token: process.env.DISCORD_BOT_TOKEN,
         enabled: true,
-        dm: dm,
+        dmPolicy: dmPolicy,
     };
+    if (dmPolicy === 'open') {
+        config.channels.discord.allowFrom = ['*'];
+    }
+    config.plugins = config.plugins || {};
+    config.plugins.entries = config.plugins.entries || {};
+    config.plugins.entries.discord = { enabled: true };
+}
+
+// Pin the default model. Onboard defaults to the newest Opus, which costs
+// ~40% more per token than Sonnet for this workload.
+config.agents = config.agents || {};
+config.agents.defaults = config.agents.defaults || {};
+config.agents.defaults.model = { primary: 'anthropic/claude-sonnet-5' };
+
+// openclaw 2026.6.11's built-in Anthropic catalog predates Claude Sonnet 5,
+// so the model must be registered explicitly. models.mode='merge' merges the
+// providers MAP, but each provider entry replaces the built-in wholesale —
+// an entry carrying only `models` drops api/baseUrl and openclaw falls back
+// to its openai-responses transport against api.openai.com, which 401s with
+// an Anthropic key. The entry must be a complete provider definition.
+config.models = config.models || {};
+config.models.mode = 'merge';
+config.models.providers = config.models.providers || {};
+config.models.providers.anthropic = {
+    baseUrl: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
+    api: 'anthropic-messages',
+    models: [
+        { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', contextWindow: 1000000, maxTokens: 64000 },
+    ],
+};
+if (process.env.ANTHROPIC_API_KEY) {
+    config.models.providers.anthropic.apiKey = process.env.ANTHROPIC_API_KEY;
 }
 
 // Slack configuration
@@ -203,6 +241,45 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
 
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
+
+// Grant the local CLI device full operator scopes.
+// openclaw auto-pairs the CLI with only operator.pairing, but >= 2026.4.21
+// the CLI requests broader scopes on connect, and `openclaw devices approve`
+// itself can't connect to approve its own upgrade — a documented deadlock
+// (openclaw/openclaw#70687, #81555). The Worker's admin API (device approval
+// in the Control UI) runs through this CLI, so without this the admin
+// console can't approve anything. Re-applied on every container start.
+const cliScopes = [
+    'operator.admin',
+    'operator.approvals',
+    'operator.pairing',
+    'operator.read',
+    'operator.write',
+    'operator.talk.secrets',
+];
+const pairedPath = '/home/openclaw/.openclaw/devices/paired.json';
+try {
+    if (fs.existsSync(pairedPath)) {
+        const paired = JSON.parse(fs.readFileSync(pairedPath, 'utf8'));
+        const entries = Array.isArray(paired) ? paired : Object.values(paired);
+        let updated = 0;
+        for (const dev of entries) {
+            if (!dev || (dev.clientId !== 'cli' && dev.clientMode !== 'cli')) continue;
+            dev.scopes = cliScopes;
+            dev.approvedScopes = cliScopes;
+            // tokens is an object keyed by role in 2026.6 (array in older versions)
+            const tokens = Array.isArray(dev.tokens) ? dev.tokens : Object.values(dev.tokens || {});
+            for (const t of tokens) t.scopes = cliScopes;
+            updated++;
+        }
+        if (updated > 0) {
+            fs.writeFileSync(pairedPath, JSON.stringify(paired, null, 2));
+            console.log('Granted full operator scopes to ' + updated + ' CLI device(s)');
+        }
+    }
+} catch (e) {
+    console.warn('Could not patch CLI device scopes:', e.message);
+}
 EOFPATCH
 
 # ============================================================
