@@ -37,7 +37,13 @@
     {
       "class_name": "Sandbox",
       "image": "./Dockerfile",
-      "instance_type": "standard-1",
+      // Measured baseline usage on standard-1 (4GiB/8GB) was only ~600MB
+      // memory / ~1.5GB disk. Custom instance types enforce >=3GiB memory
+      // per vCPU (up to 4 vCPUs), which erases most savings at 1 vCPU, so
+      // "basic" (1/4 vCPU, 1GiB memory, 4GB disk) is used instead — it
+      // sidesteps that floor and comfortably covers the baseline with
+      // headroom to spare, at roughly a quarter of standard-1's cost.
+      "instance_type": "basic",
       "max_instances": 1,
     },
   ],
