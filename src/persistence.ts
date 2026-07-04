@@ -5,8 +5,44 @@ const HANDLE_KEY = 'backup-handle.json';
 
 const RESTORE_NEEDED_KEY = 'restore-needed';
 
+// Sentinel file inside the container marking that a restore has run for THIS
+// container instance. /tmp is wiped when the instance is replaced (deploy
+// rollout, eviction), unlike the per-isolate `restored` flag below, which
+// survives instance replacement and would wrongly skip the restore.
+const RESTORE_SENTINEL = '/tmp/.moltbot-restored';
+
 // Per-isolate flag for fast path (avoid R2 read on every request)
 let restored = false;
+
+async function markContainerRestored(sandbox: Sandbox): Promise<void> {
+  try {
+    await sandbox.exec(`touch ${RESTORE_SENTINEL}`);
+  } catch {
+    // non-fatal: worst case the next fresh-container check re-restores
+  }
+}
+
+async function containerHasRestored(sandbox: Sandbox): Promise<boolean> {
+  try {
+    const result = await sandbox.exec(`test -f ${RESTORE_SENTINEL}`);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Force a restore if this container instance has never restored, regardless
+ * of the per-isolate `restored` flag. Called before spawning a new gateway
+ * process: a missing gateway is exactly the situation after a container
+ * replacement, where the isolate flag is stale and the instance is pristine.
+ */
+export async function restoreForFreshContainer(sandbox: Sandbox, bucket: R2Bucket): Promise<void> {
+  if (await containerHasRestored(sandbox)) return;
+  console.log('[persistence] No restore sentinel in container — fresh instance, forcing restore');
+  restored = false;
+  await restoreIfNeeded(sandbox, bucket);
+}
 
 /**
  * Signal that a restore is needed (e.g. after gateway restart).
@@ -63,6 +99,7 @@ export async function restoreIfNeeded(sandbox: Sandbox, bucket: R2Bucket): Promi
   if (!handle) {
     console.log('[persistence] No backup handle found in R2, skipping restore');
     restored = true;
+    await markContainerRestored(sandbox);
     return;
   }
 
@@ -80,6 +117,7 @@ export async function restoreIfNeeded(sandbox: Sandbox, bucket: R2Bucket): Promi
     // Clear the restore signal and set the per-isolate flag
     await bucket.delete(RESTORE_NEEDED_KEY);
     restored = true;
+    await markContainerRestored(sandbox);
     console.log(`[persistence] Restore complete in ${Date.now() - t0}ms`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

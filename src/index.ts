@@ -385,8 +385,38 @@ app.all('*', async (c) => {
           typeof event.data === 'string' ? event.data.slice(0, 200) : '(binary)',
         );
       }
+      let data = event.data;
+
+      // Inject the gateway token into the Control UI's connect request.
+      // openclaw >= 2026.6 reads auth from the connect message itself
+      // (params.auth.token / params.auth.deviceToken), not from the ?token=
+      // query param injected above. The browser client never holds the token
+      // (CF Access strips it from redirect URLs), so an auth-less connect
+      // gets AUTH_TOKEN_MISSING. The user already passed CF Access to reach
+      // this proxy, so supplying the token server-side is safe. Connects that
+      // already carry a token or a paired deviceToken pass through untouched.
+      if (typeof data === 'string' && c.env.MOLTBOT_GATEWAY_TOKEN) {
+        try {
+          const msg = JSON.parse(data);
+          if (
+            msg?.method === 'connect' &&
+            msg.params &&
+            !msg.params.auth?.token &&
+            !msg.params.auth?.deviceToken
+          ) {
+            msg.params.auth = { ...(msg.params.auth || {}), token: c.env.MOLTBOT_GATEWAY_TOKEN };
+            data = JSON.stringify(msg);
+            if (debugLogs) {
+              console.log('[WS] Injected gateway token into connect request');
+            }
+          }
+        } catch {
+          // not JSON — pass through unchanged
+        }
+      }
+
       if (containerWs.readyState === WebSocket.OPEN) {
-        containerWs.send(event.data);
+        containerWs.send(data);
       } else if (debugLogs) {
         console.log('[WS] Container not open, readyState:', containerWs.readyState);
       }

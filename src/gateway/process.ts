@@ -2,6 +2,7 @@ import type { Sandbox, Process } from '@cloudflare/sandbox';
 import type { OpenClawEnv } from '../types';
 import { GATEWAY_PORT, STARTUP_TIMEOUT_MS } from '../config';
 import { buildEnvVars } from './env';
+import { restoreForFreshContainer } from '../persistence';
 
 /**
  * Force kill the gateway process and clean up lock files.
@@ -160,6 +161,19 @@ export async function ensureGateway(
     }
   } catch (e) {
     console.log('Port probe failed, proceeding to start gateway:', e);
+  }
+
+  // About to start a new gateway — this is exactly the situation after a
+  // container replacement (deploy rollout, eviction), where the per-isolate
+  // restore flag is stale and the fresh instance has pristine /home/openclaw.
+  // Force a restore if this instance has never restored, so the gateway boots
+  // against the backed-up config and device pairings instead of image defaults.
+  if (env.BACKUP_BUCKET) {
+    try {
+      await restoreForFreshContainer(sandbox, env.BACKUP_BUCKET);
+    } catch (e) {
+      console.error('[Gateway] Pre-start restore failed, starting anyway:', e);
+    }
   }
 
   // Start a new OpenClaw gateway
