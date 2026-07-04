@@ -36,6 +36,12 @@ jobs:
         run: npm test
 
   e2e:
+    # Requires 6 E2E_* secrets (Cloudflare API token, account ID, R2 keys,
+    # Access team domain, workers subdomain) to provision real cloud
+    # infrastructure per run. Not configured on this fork, so this job is
+    # manual-only (Actions tab -> Run workflow) rather than running (and
+    # failing) automatically on every push.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
